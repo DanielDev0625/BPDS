@@ -1,10 +1,11 @@
+```tsx
 "use client";
 
-//client le dice a next que este componente se renderiza en la pagina//
+import { useEffect, useState } from "react";
 
-import { useState, useEffect } from "react";
-
-// useState y useEffect son HOOKS de react, useState maneja la memoria de los componentes y useEffect sirve para sincronizar datos en el almacenamiento del navegador//
+/* ---------------------------------- */
+/* TIPOS                              */
+/* ---------------------------------- */
 
 interface Task {
   id: number;
@@ -12,137 +13,284 @@ interface Task {
   completed: boolean;
 }
 
-//task es un contrato de typeScript que define como luce una tarea, ID es un identificador numerico, text el contenido del texto, y un booleano sirve para marcar una tarea completa o no//
+/* ---------------------------------- */
+/* COMPONENTE                         */
+/* ---------------------------------- */
 
 export default function TodoList() {
+  /* -------------------------------- */
+  /* ESTADOS                          */
+  /* -------------------------------- */
+
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [inputVal, setInputVal] = useState("");
+  const [inputValue, setInputValue] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
 
-  //tasks almacena las tareas creadas, inputVal guarda temporalmente lo que el usuario escribe en la barra para crear una tarea//
-  //editingID guarda el id de la tarea que se esta editando en el momento es null si no se esta editando ninguna tarea//
-  //editText guarda el texto temporal mientras lo editas//
+  /* -------------------------------- */
+  /* LOCAL STORAGE                    */
+  /* -------------------------------- */
 
+  // Cargar tareas guardadas al iniciar
   useEffect(() => {
-    const saved = localStorage.getItem("tasks");
-    if (saved) setTasks(JSON.parse(saved));
+    const savedTasks = localStorage.getItem("tasks");
+
+    if (savedTasks) {
+      try {
+        setTasks(JSON.parse(savedTasks));
+      } catch {
+        console.error("No se pudieron cargar las tareas.");
+      }
+    }
   }, []);
 
+  // Guardar tareas cada vez que cambian
   useEffect(() => {
     localStorage.setItem("tasks", JSON.stringify(tasks));
   }, [tasks]);
 
-  //useEffect carga las tareas guardadas en la memoria del navegador//
-  //el segundo useEffect actualiza el almacenamiento local "localstorage" cada vez que la tarea sufre cambios//
+  /* -------------------------------- */
+  /* AGREGAR TAREA                    */
+  /* -------------------------------- */
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && inputVal.trim() !== "") {
-      setTasks([...tasks, { id: Date.now(), text: inputVal.trim(), completed: false }]);
-      setInputVal("");
+  const addTask = () => {
+    const text = inputValue.trim();
+
+    if (!text) return;
+
+    const newTask: Task = {
+      id: Date.now(),
+      text,
+      completed: false,
+    };
+
+    setTasks((currentTasks) => [...currentTasks, newTask]);
+    setInputValue("");
+  };
+
+  const handleInputKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key === "Enter") {
+      addTask();
     }
   };
 
-  //handleKeyDown es una funcion que se ejecuta cuando el usuario presiona una tecla en la barra de entrada, si la tecla es "Enter" y el valor no esta vacio, se crea una nueva tarea con un ID unico basado en la fecha actual, el texto ingresado y un estado de completado falso. Luego se limpia el valor del input//
+  /* -------------------------------- */
+  /* COMPLETAR TAREA                  */
+  /* -------------------------------- */
 
   const toggleComplete = (id: number) => {
-    setTasks(
-      tasks.map((task) => (task.id === id ? { ...task, completed: !task.completed } : task))
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === id
+          ? { ...task, completed: !task.completed }
+          : task
+      )
     );
   };
 
-  //toggleComplete es la funcion que cambia el estado de la tarea a completado//
+  /* -------------------------------- */
+  /* EDITAR TAREA                     */
+  /* -------------------------------- */
 
   const startEditing = (task: Task) => {
     setEditingId(task.id);
     setEditText(task.text);
   };
 
-  //startEditing activa el modo de edicion haciendo click en el texto de una tarea//
-
   const saveEdit = (id: number) => {
-    setTasks(
-      tasks.map((task) => (task.id === id ? { ...task, text: editText.trim() || task.text } : task))
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === id
+          ? {
+              ...task,
+              text: editText.trim() || task.text,
+            }
+          : task
+      )
     );
+
     setEditingId(null);
+    setEditText("");
   };
 
-  //saveEdit guarda los cambios cuando sales del cuadro de texto//
+  const handleEditKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    id: number
+  ) => {
+    if (event.key === "Enter") {
+      saveEdit(id);
+    }
+
+    if (event.key === "Escape") {
+      setEditingId(null);
+      setEditText("");
+    }
+  };
+
+  /* -------------------------------- */
+  /* ELIMINAR TAREA                   */
+  /* -------------------------------- */
 
   const deleteTask = (id: number) => {
-    setTasks(tasks.filter((task) => task.id !== id));
+    setTasks((currentTasks) =>
+      currentTasks.filter((task) => task.id !== id)
+    );
   };
 
-  //filtra todas las tareas buscando el ID de la tarea que se quiere eliminar//
+  /* -------------------------------- */
+  /* ESTADÍSTICAS                     */
+  /* -------------------------------- */
 
-  //del <div> para abajo es la estructura visual de la aplicacion//
+  const completedTasks = tasks.filter(
+    (task) => task.completed
+  ).length;
+
+  const pendingTasks = tasks.length - completedTasks;
+
+  /* -------------------------------- */
+  /* INTERFAZ                         */
+  /* -------------------------------- */
 
   return (
-    <div className="flex flex-col items-center min-h-screen bg-zinc-50 p-6 font-sans">
-      <div className="w-full max-w-md bg-white p-6 rounded-xl shadow-md border border-zinc-200">
-        <h1 className="text-2xl font-bold mb-4 text-zinc-800 text-center">TODO List</h1>
+    <main className="min-h-screen bg-zinc-50 px-4 py-8 font-sans">
+      <section className="mx-auto w-full max-w-md">
+        {/* ENCABEZADO */}
+        <header className="mb-6 text-center">
+          <h1 className="text-3xl font-bold text-zinc-800">
+            TODO List
+          </h1>
 
-        <input
-          type="text"
-          className="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-800"
-          placeholder="Escribe una tarea y presiona Enter..."
-          value={inputVal}
-          onChange={(e) => setInputVal(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
+          <p className="mt-1 text-sm text-zinc-500">
+            Organiza tus tareas fácilmente
+          </p>
+        </header>
 
-        <ul className="space-y-3">
-          {tasks.map((task) => (
-            <li
-              key={task.id}
-              className="flex items-center justify-between p-3 bg-zinc-50 rounded-lg border border-zinc-200"
+        {/* TARJETA PRINCIPAL */}
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          {/* INPUT */}
+          <div className="mb-5">
+            <label
+              htmlFor="new-task"
+              className="mb-2 block text-sm font-medium text-zinc-700"
             >
-              <div className="flex items-center gap-3 flex-1">
-                <input
-                  type="checkbox"
-                  checked={task.completed}
-                  onChange={() => toggleComplete(task.id)}
-                  className="w-5 h-5 accent-blue-600 cursor-pointer"
-                />
+              Nueva tarea
+            </label>
 
-                {editingId === task.id ? (
-                  <input
-                    type="text"
-                    autoFocus
-                    className="flex-1 px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-800 bg-white"
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    onBlur={() => saveEdit(task.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveEdit(task.id);
-                    }}
-                  />
-                ) : (
-                  <span
-                    onClick={() => startEditing(task)}
-                    className={`flex-1 cursor-pointer select-none ${
-                      task.completed ? "line-through text-zinc-400" : "text-zinc-800"
-                    }`}
-                  >
-                    {task.text}
-                  </span>
-                )}
-              </div>
+            <div className="flex gap-2">
+              <input
+                id="new-task"
+                type="text"
+                value={inputValue}
+                onChange={(event) =>
+                  setInputValue(event.target.value)
+                }
+                onKeyDown={handleInputKeyDown}
+                placeholder="Escribe una tarea..."
+                className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-4 py-2.5 text-zinc-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
 
               <button
-                onClick={() => deleteTask(task.id)}
-                className="ml-3 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition"
+                type="button"
+                onClick={addTask}
+                disabled={!inputValue.trim()}
+                className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Eliminar
+                Agregar
               </button>
-            </li>
-          ))}
-        </ul>
+            </div>
+          </div>
 
-        {tasks.length === 0 && (
-          <p className="text-center text-zinc-400 mt-4 text-sm">No hay tareas pendientes.</p>
-        )}
-      </div>
-    </div>
+          {/* ESTADÍSTICAS */}
+          {tasks.length > 0 && (
+            <div className="mb-4 flex justify-between rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-500">
+              <span>Total: {tasks.length}</span>
+              <span>Pendientes: {pendingTasks}</span>
+              <span>Completadas: {completedTasks}</span>
+            </div>
+          )}
+
+          {/* LISTA */}
+          {tasks.length > 0 ? (
+            <ul className="space-y-3">
+              {tasks.map((task) => (
+                <li
+                  key={task.id}
+                  className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 transition hover:border-zinc-300"
+                >
+                  {/* CHECKBOX */}
+                  <input
+                    type="checkbox"
+                    checked={task.completed}
+                    onChange={() => toggleComplete(task.id)}
+                    className="h-5 w-5 shrink-0 cursor-pointer accent-blue-600"
+                    aria-label={`Marcar "${task.text}" como ${
+                      task.completed
+                        ? "pendiente"
+                        : "completada"
+                    }`}
+                  />
+
+                  {/* CONTENIDO */}
+                  <div className="min-w-0 flex-1">
+                    {editingId === task.id ? (
+                      <input
+                        type="text"
+                        value={editText}
+                        autoFocus
+                        onChange={(event) =>
+                          setEditText(event.target.value)
+                        }
+                        onBlur={() => saveEdit(task.id)}
+                        onKeyDown={(event) =>
+                          handleEditKeyDown(event, task.id)
+                        }
+                        className="w-full rounded-md border border-blue-400 bg-white px-2 py-1.5 text-sm text-zinc-800 outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => startEditing(task)}
+                        className={`w-full cursor-pointer text-left text-sm ${
+                          task.completed
+                            ? "text-zinc-400 line-through"
+                            : "text-zinc-800"
+                        }`}
+                        title="Haz clic para editar"
+                      >
+                        {task.text}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* ELIMINAR */}
+                  <button
+                    type="button"
+                    onClick={() => deleteTask(task.id)}
+                    className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 hover:text-red-700"
+                    aria-label={`Eliminar ${task.text}`}
+                  >
+                    Eliminar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            /* ESTADO VACÍO */
+            <div className="py-8 text-center">
+              <p className="text-sm font-medium text-zinc-500">
+                No hay tareas todavía
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-400">
+                Agrega una tarea para comenzar.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+    </main>
   );
 }
+```
