@@ -1,3 +1,4 @@
+jose-daniel
 # TodoList Application
 
 A modern, responsive TodoList application built with Next.js, React, TypeScript, and Tailwind CSS. It features a clean user interface, local data persistence via localStorage, and an advanced task management system including a dedicated recycle bin sidebar.
